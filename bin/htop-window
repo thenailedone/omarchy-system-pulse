@@ -9,8 +9,8 @@
 
 set -euo pipefail
 
-APP_ID="org.omarchy.htop"
-STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/plugins/io.github.fernandomenolli.htop"
+APP_ID="io.github.thenailedone.system-pulse.htop"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/plugins/io.github.thenailedone.system-pulse"
 SEED_HTOPRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)/htoprc"
 
 command -v htop >/dev/null || { echo "htop-window: htop is not installed" >&2; exit 1; }

@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "id": "io.github.fernandomenolli.htop",
-  "name": "htop",
-  "version": "0.1.0",
-  "author": "Fernando Menolli",
+  "id": "io.github.thenailedone.system-pulse",
+  "name": "System Pulse",
+  "version": "1.0.0",
+  "author": "Fernando Menolli; maintained fork by thenailedone",
   "license": "MIT",
-  "description": "Live CPU and memory in the bar, and the real htop one click away.",
+  "description": "Auditable CPU and memory meters with PID-safe process accounting and htop one click away.",
   "kinds": [
     "bar-widget"
   ],
@@ -13,8 +13,8 @@
     "barWidget": "Panel.qml"
   },
   "barWidget": {
-    "displayName": "htop",
-    "description": "CPU and memory read straight from /proc, with the top processes and htop one click away.",
+    "displayName": "System Pulse",
+    "description": "CPU and memory read straight from /proc, with PID-safe top processes and htop one click away.",
     "category": "System",
     "allowMultiple": false,
     "defaultSection": "right",

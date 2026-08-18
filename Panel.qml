@@ -12,8 +12,8 @@ import "model/Format.js" as Format
 // opens as an ordinary window you manage like any other.
 Panel {
   id: root
-  moduleName: "io.github.fernandomenolli.htop"
-  ipcTarget: "io.github.fernandomenolli.htop"
+  moduleName: "io.github.thenailedone.system-pulse"
+  ipcTarget: "io.github.thenailedone.system-pulse"
 
   readonly property int refreshIntervalMs: setting("refreshIntervalMs", 2000)
   readonly property string showMode: setting("show", "both")
@@ -133,7 +133,7 @@ Panel {
           PanelHero {
             foreground: root.foreground
             fontFamily: root.fontFamily
-            title: "htop"
+            title: "System Pulse"
             meta: Format.uptimeLabel(monitor.uptimeSeconds)
             iconComponent: Component {
               Text {

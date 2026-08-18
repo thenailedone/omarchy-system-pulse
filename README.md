@@ -1,123 +1,108 @@
-# htop for Omarchy
+# System Pulse for Omarchy
 
-Live CPU and memory in the bar. Click it for the panel that answers what is
-eating this machine right now, and a button that opens the real htop in a
-terminal window.
+An auditable, low-overhead CPU and memory widget for Omarchy 4. Click the bar
+meters for current top processes or open the real `htop` in a normal terminal
+window.
 
-![The meters in the bar, and the panel that opens from them.](docs/panel.png)
+System Pulse is a maintained fork of Fernando Menolli's excellent
+[`omarchy-htop`](https://github.com/fernandomenolli/omarchy-htop). Fernando
+designed and implemented the original plugin; this fork preserves the full Git
+history, copyright, MIT licence, screenshots, and core architecture. See
+[`UPSTREAM.md`](UPSTREAM.md) for the exact baseline and every intentional
+divergence.
 
-*The meters in the bar, and the panel that opens from them.*
+![The meters and process panel](docs/panel.png)
 
+## Why this fork exists
 
-The catalogue has four native process monitors and two plugins that launch
-btop. This is the one that fronts htop, and it does not reimplement it.
+The fork gives its owner an explicit review point for every update. The
+installed checkout follows this repository only; nothing is pulled from the
+upstream project or the plugin marketplace automatically.
+
+The original design is deliberately retained because it is efficient:
+
+- CPU and memory meters read `/proc/stat` and `/proc/meminfo` directly.
+- The idle bar launches no recurring shell process.
+- Process scanning runs only while the panel is open.
+- The full `htop` process starts only when requested.
+
+This fork additionally makes process accounting safe against PID reuse by
+matching both PID and Linux process start time between samples.
+
+## Requirements
+
+- Omarchy 4 or newer
+- `htop`
+- A standard Linux `/proc` filesystem
 
 ## Install
 
 ```bash
-omarchy plugin add https://github.com/fernandomenolli/omarchy-htop.git --enable
+omarchy plugin add https://github.com/thenailedone/omarchy-system-pulse.git --enable
 ```
 
-Needs `htop` and Omarchy 4.
+## Usage
+
+| Action | Result |
+|---|---|
+| Left click | Open or close the process panel |
+| Right click | Cycle both → CPU → memory |
+| Open htop | Launch or focus a dedicated htop terminal window |
+
+Settings under **Setup → Plugins** control the refresh interval, visible bar
+meters, urgent threshold, and process-list length.
+
+## Data access and security
+
+System Pulse:
+
+- reads `/proc/stat`, `/proc/meminfo`, `/proc/uptime`, and `/proc/<pid>/stat`;
+- creates a private htop configuration under
+  `~/.local/state/omarchy/plugins/io.github.thenailedone.system-pulse/`;
+- executes only its bundled `htop-window` launcher and a fixed, non-user-input
+  process snapshot command;
+- does not use the network, `sudo`, `pkexec`, Docker, telemetry, or credentials;
+- does not modify Hyprland, the global htop configuration, or packaged files in
+  `/usr/share/omarchy`.
+
+## Verification
+
+```bash
+node tests/run.js
+omarchy plugin validate .
+git diff --check
+```
+
+Before updating an installed copy, inspect what changed:
+
+```bash
+git fetch origin
+git log --oneline HEAD..origin/main
+git diff --stat HEAD..origin/main
+git diff HEAD..origin/main
+```
+
+Then update explicitly:
+
+```bash
+omarchy plugin update io.github.thenailedone.system-pulse
+```
 
 ## Remove
 
 ```bash
-omarchy plugin remove io.github.fernandomenolli.htop
+omarchy plugin remove io.github.thenailedone.system-pulse
 ```
 
-That takes the plugin out of the bar and deletes its directory. Your htop
-config is left behind on purpose. Delete it yourself if you want it gone:
+The private htop state is intentionally retained. Remove it separately if no
+longer wanted:
 
 ```bash
-rm -rf ~/.local/state/omarchy/plugins/io.github.fernandomenolli.htop
+rm -rf ~/.local/state/omarchy/plugins/io.github.thenailedone.system-pulse
 ```
 
-The plugin writes nowhere else. Your `hyprland.conf`, `shell.json` and
-`~/.config/htop/` are never touched.
+## Licence and credit
 
-## What the clicks do
-
-![CPU and memory, left of the tray.](docs/bar.png)
-
-*CPU and memory, left of the tray.*
-
-| Click | Action |
-|-------|--------|
-| left | open the panel |
-| right | cycle what the bar shows: both → CPU → memory |
-
-Inside the panel, **Open htop** opens htop in a terminal window. It is an
-ordinary Hyprland window you tile, move and close like any other. Press it again with
-htop already running and it focuses that window instead of opening a second
-one.
-
-## Bind it to a key
-
-The plugin never writes to your Hyprland config. If you want htop on a key,
-add it yourself:
-
-```lua
--- ~/.config/hypr/bindings/htop.lua
-o.bind("SUPER + ESCAPE", "System monitor", "omarchy-shell io.github.fernandomenolli.htop toggle")
-```
-
-## Settings
-
-Under Setup > Plugins.
-
-| Setting | Default | What it does |
-|---------|---------|--------------|
-| Refresh interval | 2000 ms | how often the meters resample |
-| Show in the bar | both | both, CPU only, or memory only |
-| Urgent above | 85% | where a meter turns the theme's urgent colour |
-| Rows per process list | 4 | length of the two lists in the panel |
-
-## What it costs
-
-Measured on the machine this was built on, an AMD box with 24 cores running
-Omarchy 4.0.0.alpha and Hyprland 0.56.2. The method is to read `utime + stime`
-from `/proc/<pid>/stat` for the `omarchy-shell` process, with the plugin
-enabled and then disabled, and take the difference. You can repeat it in four
-lines of shell.
-
-| | Shell alone | With this plugin |
-|---|---|---|
-| Idle, 30 seconds | 10 ms of CPU | 30 ms, the only one of these that ticks at rest |
-| 300 focus switches | 840 ms | 890 ms |
-| Memory | ~500 MB | no measurable change |
-
-The shell's own cost dominates everything here. **2.8 ms of that per focus
-switch is Omarchy itself**: the bar redrawing, the active-window widget, the
-workspace indicators. All five of these plugins together add 0.17 ms on top.
-
-**It does not get heavier as it runs.** The two `/proc` reads cost the same on the first tick and the ten-thousandth; there is nothing accumulated to re-read.
-
-
-## Your htoprc is yours
-
-On first open the plugin seeds a curated `htoprc`, with two 50/50 columns,
-kernel threads hidden and sorted by CPU, to:
-
-```
-~/.local/state/omarchy/plugins/io.github.fernandomenolli.htop/htoprc
-```
-
-htop rewrites that file when it exits, and the plugin never overwrites it
-once it exists. Your `~/.config/htop/htoprc` is left alone either way.
-
-Colours come from the terminal, which Omarchy themes, so htop follows a theme
-switch on its own.
-
-## Tests
-
-```bash
-node tests/run.js
-```
-
-No dependencies and no framework. They cover `model/`, which is the `/proc`
-parsing and the formatting: the half that runs without a QML engine.
-
-## Licence
-
-MIT.
+MIT. Original plugin copyright and implementation by Fernando Menolli. Fork
+maintenance and PID-reuse hardening by `thenailedone`. See [`LICENSE`](LICENSE)
+and the preserved Git history.

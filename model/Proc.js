@@ -46,15 +46,16 @@ function parseProcesses(text) {
 
   for (var i = 0; i < lines.length; i++) {
     var parts = lines[i].trim().split(" ")
-    if (parts.length < 4) continue
+    if (parts.length < 5) continue
 
     var pid = parts[0]
     var ticks = Number(parts[1])
-    var rssPages = Number(parts[2])
-    var name = parts.slice(3).join(" ")
-    if (!/^\d+$/.test(pid) || isNaN(ticks) || isNaN(rssPages) || name === "") continue
+    var startTicks = Number(parts[2])
+    var rssPages = Number(parts[3])
+    var name = parts.slice(4).join(" ")
+    if (!/^\d+$/.test(pid) || isNaN(ticks) || isNaN(startTicks) || isNaN(rssPages) || name === "") continue
 
-    table[pid] = { ticks: ticks, rssPages: rssPages, name: name }
+    table[pid] = { ticks: ticks, startTicks: startTicks, rssPages: rssPages, name: name }
   }
 
   return table
@@ -69,7 +70,7 @@ function topProcesses(previous, current, totalDelta, limit) {
   var ranked = []
   for (var pid in current) {
     var before = previous[pid]
-    if (!before) continue
+    if (!before || before.startTicks !== current[pid].startTicks) continue
 
     var burned = current[pid].ticks - before.ticks
     if (burned <= 0) continue

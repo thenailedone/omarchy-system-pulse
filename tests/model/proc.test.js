@@ -60,30 +60,30 @@ test("parseMemory returns null on empty input", () => {
   eq(Proc.parseMemory(""), null)
 })
 
-// One line per process: pid, utime+stime in jiffies, RSS in pages, then the
+// One line per process: pid, utime+stime, start time, RSS pages, then the
 // command name last so a name with a space in it cannot break the split.
 const PROCESSES = [
-  "1 4210 3312 systemd",
-  "1046 0 0 kworker/21:1H-kblockd",
-  "286275 91544 148902 ruby",
-  "211194 250310 512044 chromium",
-  "512 33 900 Web Content",
+  "1 4210 10 3312 systemd",
+  "1046 0 20 0 kworker/21:1H-kblockd",
+  "286275 91544 30 148902 ruby",
+  "211194 250310 40 512044 chromium",
+  "512 33 50 900 Web Content",
 ].join("\n")
 
 test("parseProcesses keys by pid and keeps a name with a space in it", () => {
-  eq(Proc.parseProcesses(PROCESSES)["512"], { ticks: 33, rssPages: 900, name: "Web Content" })
+  eq(Proc.parseProcesses(PROCESSES)["512"], { ticks: 33, startTicks: 50, rssPages: 900, name: "Web Content" })
 })
 
 test("parseProcesses skips a line it cannot read", () => {
-  eq(Proc.parseProcesses("garbage\n7 12 40 bash"), { "7": { ticks: 12, rssPages: 40, name: "bash" } })
+  eq(Proc.parseProcesses("garbage\n7 12 30 40 bash"), { "7": { ticks: 12, startTicks: 30, rssPages: 40, name: "bash" } })
 })
 
 test("topProcesses ranks by the jiffies each process burned since last time", () => {
   const previous = Proc.parseProcesses(PROCESSES)
   const current = Proc.parseProcesses([
-    "1 4210 3312 systemd",
-    "286275 91644 148902 ruby",
-    "211194 250330 512044 chromium",
+    "1 4210 10 3312 systemd",
+    "286275 91644 30 148902 ruby",
+    "211194 250330 40 512044 chromium",
   ].join("\n"))
 
   eq(Proc.topProcesses(previous, current, 4000, 2), [
@@ -93,7 +93,7 @@ test("topProcesses ranks by the jiffies each process burned since last time", ()
 })
 
 test("topProcesses ignores a process that burned nothing", () => {
-  const sample = Proc.parseProcesses("7 12 40 bash")
+  const sample = Proc.parseProcesses("7 12 30 40 bash")
   eq(Proc.topProcesses(sample, sample, 4000, 5), [])
 })
 
@@ -102,8 +102,14 @@ test("topProcesses has nothing to rank on the first sample", () => {
 })
 
 test("topProcesses skips a process that was not there last time", () => {
-  const previous = Proc.parseProcesses("7 12 40 bash")
-  const current = Proc.parseProcesses("7 12 40 bash\n9 300 40 htop")
+  const previous = Proc.parseProcesses("7 12 30 40 bash")
+  const current = Proc.parseProcesses("7 12 30 40 bash\n9 300 50 40 htop")
+  eq(Proc.topProcesses(previous, current, 4000, 5), [])
+})
+
+test("topProcesses rejects a recycled PID with a different start time", () => {
+  const previous = Proc.parseProcesses("7 12 30 40 old-process")
+  const current = Proc.parseProcesses("7 300 90 40 new-process")
   eq(Proc.topProcesses(previous, current, 4000, 5), [])
 })
 
@@ -116,8 +122,8 @@ test("parseUptime returns null on nonsense", () => {
 })
 
 test("parseProcesses ignores the /proc/stat header the scan carries with it", () => {
-  const scan = "cpu  909912 785 115028 31657426 9424 24196 14497 0 0 0\n7 12 40 bash"
-  eq(Proc.parseProcesses(scan), { "7": { ticks: 12, rssPages: 40, name: "bash" } })
+  const scan = "cpu  909912 785 115028 31657426 9424 24196 14497 0 0 0\n7 12 30 40 bash"
+  eq(Proc.parseProcesses(scan), { "7": { ticks: 12, startTicks: 30, rssPages: 40, name: "bash" } })
   eq(Proc.parseCpu(scan), { total: 32731268, idle: 31666850 })
 })
 
@@ -130,7 +136,7 @@ test("topMemory ranks by resident pages and needs no previous sample", () => {
 })
 
 test("topMemory leaves out the kernel threads, which hold no pages", () => {
-  eq(Proc.topMemory(Proc.parseProcesses("1046 0 0 kworker/21:1H"), 4096, 5), [])
+  eq(Proc.topMemory(Proc.parseProcesses("1046 0 20 0 kworker/21:1H"), 4096, 5), [])
 })
 
 test("topMemory has nothing to rank without a sample", () => {
@@ -138,7 +144,7 @@ test("topMemory has nothing to rank without a sample", () => {
 })
 
 test("parsePageSize takes the size the scan reported", () => {
-  eq(Proc.parsePageSize("4096\ncpu  1 2 3 4 5\n7 12 40 bash"), 4096)
+  eq(Proc.parsePageSize("4096\ncpu  1 2 3 4 5\n7 12 30 40 bash"), 4096)
   eq(Proc.parsePageSize("16384\n"), 16384)
 })
 

@@ -31,12 +31,13 @@ Item {
   // was worth up to a factor of two on the figures.
   //
   // The command name goes last so a name with a space in it cannot break the
-  // split, and utime+stime come straight out of /proc rather than from ps,
-  // whose %CPU is an average over the process's whole life.
+  // split. Start time travels with every PID so a PID recycled between samples
+  // cannot inherit the previous process's CPU ticks. utime+stime come straight
+  // out of /proc rather than from ps, whose %CPU is a lifetime average.
   readonly property string processCommand:
     'getconf PAGESIZE; head -1 /proc/stat; ' +
     'awk \'FNR==1{ o=index($0,"("); c=index($0,") "); split(substr($0,c+2),f," "); ' +
-    'print substr($0,1,o-2), f[12]+f[13], f[22], substr($0,o+1,c-o-1) }\' ' +
+    'print substr($0,1,o-2), f[12]+f[13], f[20], f[22], substr($0,o+1,c-o-1) }\' ' +
     '/proc/[0-9]*/stat 2>/dev/null'
 
   FileView { id: statFile; path: "/proc/stat"; blockLoading: true }
